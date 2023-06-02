@@ -17,21 +17,20 @@ class Program
             // List all files in the directory and its subfolders
             List<string> fileNames = ListAllFiles(directoryPath);
 
-            // Display the file names
+            // Display the file names and corresponding DateTime
             Console.WriteLine($"Files in directory '{directoryPath}':");
             foreach (string fileName in fileNames)
             {
-                // Check if the file name matches the specified format
-                if (IsFileNameInFormat(fileName))
-                {
-                    // Extract the date and time from the file name
-                    string dateTimeString = ExtractDateTimeFromFileName(fileName);
+                string dateTimeString = ExtractDateTimeFromFileName(fileName);
 
+                // Check if the file name matches the specified format
+                if (IsFileNameInFormat(dateTimeString))
+                {
                     // Convert the extracted date and time to a standard DateTime format
                     if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
                     {
-                        // Print the file name with the formatted date and time
-                        Console.WriteLine($"{fileName} - {dateTime.ToString("yyyy-MM-dd HH:mm:ss")}");
+                        // Print the file name and corresponding DateTime
+                        Console.WriteLine($"{fileName} - {dateTime}");
                     }
                 }
                 else
@@ -140,14 +139,14 @@ class Program
     // Check if the file name is in the specified format (six digits underscore six digits)
     static bool IsFileNameInFormat(string fileName)
     {
-        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\d{6}_\d{6}");
+        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"^\d{8}_\d{6}$");
     }
 
     // Extract and return the date and time from the file name
     static string ExtractDateTimeFromFileName(string fileName)
     {
-        int startIndex = fileName.IndexOf("_") + 1;
-        int endIndex = fileName.LastIndexOf(".");
+        int startIndex = fileName.IndexOf('_') + 1;
+        int endIndex = fileName.LastIndexOf('.');
         return fileName.Substring(startIndex, endIndex - startIndex);
     }
 }
