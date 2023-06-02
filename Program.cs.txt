@@ -13,6 +13,14 @@ class Program
         string configFilePath = "config.txt"; // Specify the path to your config file
         List<string> directoryPaths = ReadConfigFile(configFilePath);
 
+        // Get the user input string
+        Console.Write("Enter a date-time string (format: yyyyMMdd_HHmmss): ");
+        string userInput = Console.ReadLine();
+
+        // Convert user input string to DateTime
+        DateTime userInputDateTime = ConvertToDateTime(userInput);
+        Console.WriteLine($"User input: {userInputDateTime}");
+
         // Iterate through each directory path
         foreach (string directoryPath in directoryPaths)
         {
@@ -42,7 +50,7 @@ class Program
                         DateTime entryEndTime = GetLastWriteTimeInZipFile(fileName, entry);
 
                         // Print the file name, StartTime, and EndTime
-                        Console.WriteLine($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime}");
+                        Console.WriteLine($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}");
                     }
                 }
                 else
@@ -50,7 +58,7 @@ class Program
                     endTime = File.GetLastWriteTime(fileName);
 
                     // Print the file name, StartTime, and EndTime
-                    Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime}");
+                    Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
                 }
             }
 
@@ -205,5 +213,11 @@ class Program
         }
 
         return DateTime.MinValue;
+    }
+
+    // Check if a DateTime is within the range of StartTime and EndTime
+    static bool IsDateTimeInRange(DateTime dateTime, DateTime startTime, DateTime endTime)
+    {
+        return dateTime >= startTime && dateTime <= endTime;
     }
 }
