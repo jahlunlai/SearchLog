@@ -38,10 +38,11 @@ class Program
                     foreach (string entry in zipFileEntries)
                     {
                         string entryFileName = Path.GetFileName(entry);
-                        DateTime entryLastWriteTime = GetLastWriteTimeInZipFile(fileName, entry);
+                        DateTime entryStartTime = ExtractStartTimeFromEntryFileName(entryFileName);
+                        DateTime entryEndTime = GetLastWriteTimeInZipFile(fileName, entry);
 
                         // Print the file name, StartTime, and EndTime
-                        Console.WriteLine($"{entryFileName} - StartTime: {startTime}, EndTime: {entryLastWriteTime}");
+                        Console.WriteLine($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime}");
                     }
                 }
                 else
@@ -168,6 +169,18 @@ class Program
     static bool IsZipFile(string fileName)
     {
         return string.Equals(Path.GetExtension(fileName), ".zip", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Extract the StartTime from the entry file name
+    static DateTime ExtractStartTimeFromEntryFileName(string entryFileName)
+    {
+        string dateTimeString = ExtractDateTimeFromFileName(entryFileName);
+        if (!string.IsNullOrEmpty(dateTimeString))
+        {
+            return ConvertToDateTime(dateTimeString);
+        }
+
+        return DateTime.MinValue;
     }
 
     // Get the last write time inside files in the compressed file of a zip file
