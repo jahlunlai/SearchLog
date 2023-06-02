@@ -115,4 +115,39 @@ class Program
     }
 
     // Extract and return the file names from a zip file
-    static
+    static List<string> ListFilesInZip(string zipFilePath)
+    {
+        List<string> fileNames = new List<string>();
+
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    fileNames.Add(entry.FullName);
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
+        }
+
+        return fileNames;
+    }
+
+    // Check if the file name is in the specified format (six digits underscore six digits)
+    static bool IsFileNameInFormat(string fileName)
+    {
+        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"\d{6}_\d{6}");
+    }
+
+    // Extract and return the date and time from the file name
+    static string ExtractDateTimeFromFileName(string fileName)
+    {
+        int startIndex = fileName.IndexOf("_") + 1;
+        int endIndex = fileName.LastIndexOf(".");
+        return fileName.Substring(startIndex, endIndex - startIndex);
+    }
+}
