@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 
 class Program
 {
@@ -23,15 +24,11 @@ class Program
             {
                 string dateTimeString = ExtractDateTimeFromFileName(fileName);
 
-                // Check if the file name matches the specified format
-                if (IsFileNameInFormat(dateTimeString))
+                // Convert the extracted date and time to a standard DateTime format
+                if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
                 {
-                    // Convert the extracted date and time to a standard DateTime format
-                    if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
-                    {
-                        // Print the file name and corresponding DateTime
-                        Console.WriteLine($"{fileName} - {dateTime}");
-                    }
+                    // Print the file name and corresponding DateTime
+                    Console.WriteLine($"{fileName} - {dateTime.ToString("yyyy-MM-dd HH:mm:ss")}");
                 }
                 else
                 {
@@ -136,17 +133,16 @@ class Program
         return fileNames;
     }
 
-    // Check if the file name is in the specified format (six digits underscore six digits)
-    static bool IsFileNameInFormat(string fileName)
-    {
-        return System.Text.RegularExpressions.Regex.IsMatch(fileName, @"^\d{8}_\d{6}$");
-    }
-
     // Extract and return the date and time from the file name
     static string ExtractDateTimeFromFileName(string fileName)
     {
-        int startIndex = fileName.IndexOf('_') + 1;
-        int endIndex = fileName.LastIndexOf('.');
-        return fileName.Substring(startIndex, endIndex - startIndex);
+        string pattern = @"\d{8}_\d{6}";
+        Match match = Regex.Match(fileName, pattern);
+        if (match.Success)
+        {
+            return match.Value;
+        }
+
+        return string.Empty;
     }
 }
