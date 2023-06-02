@@ -15,7 +15,7 @@ class Program
         foreach (string directoryPath in directoryPaths)
         {
             // List all files in the directory and its subfolders
-            List<string> fileNames = ListFiles(directoryPath);
+            List<string> fileNames = ListAllFiles(directoryPath);
 
             // Display the file names
             Console.WriteLine($"Files in directory '{directoryPath}':");
@@ -57,8 +57,8 @@ class Program
         return directoryPaths;
     }
 
-    // Recursively list all files in a directory and its subfolders
-    static List<string> ListFiles(string directoryPath)
+    // Recursively list all files in a directory and its subfolders, including files inside zip files
+    static List<string> ListAllFiles(string directoryPath)
     {
         List<string> fileNames = new List<string>();
 
@@ -75,13 +75,47 @@ class Program
             string[] subDirectories = Directory.GetDirectories(directoryPath);
             foreach (string subDirectory in subDirectories)
             {
-                List<string> subDirectoryFiles = ListFiles(subDirectory);
+                List<string> subDirectoryFiles = ListAllFiles(subDirectory);
                 fileNames.AddRange(subDirectoryFiles);
+            }
+
+            // Get all zip files in the current directory
+            string[] zipFiles = Directory.GetFiles(directoryPath, "*.zip");
+            foreach (string zipFile in zipFiles)
+            {
+                List<string> zipFileEntries = ListFilesInZip(zipFile);
+                foreach (string entry in zipFileEntries)
+                {
+                    fileNames.Add(Path.Combine(zipFile, entry));
+                }
             }
         }
         catch (IOException ex)
         {
             Console.WriteLine($"Error listing files: {ex.Message}");
+        }
+
+        return fileNames;
+    }
+
+    // Extract and return the file names from a zip file
+    static List<string> ListFilesInZip(string zipFilePath)
+    {
+        List<string> fileNames = new List<string>();
+
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    fileNames.Add(entry.FullName);
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
         }
 
         return fileNames;
