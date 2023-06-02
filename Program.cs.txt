@@ -18,22 +18,16 @@ class Program
             // List all files in the directory and its subfolders
             List<string> fileNames = ListAllFiles(directoryPath);
 
-            // Display the file names and corresponding DateTime
+            // Display the file names, StartTime, and EndTime
             Console.WriteLine($"Files in directory '{directoryPath}':");
             foreach (string fileName in fileNames)
             {
                 string dateTimeString = ExtractDateTimeFromFileName(fileName);
+                DateTime startTime = ConvertToDateTime(dateTimeString);
+                DateTime endTime = File.GetLastWriteTime(fileName);
 
-                // Convert the extracted date and time to a standard DateTime format
-                if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
-                {
-                    // Print the file name and corresponding DateTime
-                    Console.WriteLine($"{fileName} - {dateTime.ToString("yyyy-MM-dd HH:mm:ss")}");
-                }
-                else
-                {
-                    Console.WriteLine(fileName);
-                }
+                // Print the file name, StartTime, and EndTime
+                Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime}");
             }
             Console.WriteLine();
         }
@@ -144,5 +138,16 @@ class Program
         }
 
         return string.Empty;
+    }
+
+    // Convert the extracted date and time to a DateTime object
+    static DateTime ConvertToDateTime(string dateTimeString)
+    {
+        if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
+        {
+            return dateTime;
+        }
+
+        return DateTime.MinValue;
     }
 }
