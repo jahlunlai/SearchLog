@@ -21,7 +21,23 @@ class Program
             Console.WriteLine($"Files in directory '{directoryPath}':");
             foreach (string fileName in fileNames)
             {
-                Console.WriteLine(fileName);
+                // Check if the file name matches the specified format
+                if (IsFileNameInFormat(fileName))
+                {
+                    // Extract the date and time from the file name
+                    string dateTimeString = ExtractDateTimeFromFileName(fileName);
+
+                    // Convert the extracted date and time to a standard DateTime format
+                    if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
+                    {
+                        // Print the file name with the formatted date and time
+                        Console.WriteLine($"{fileName} - {dateTime.ToString("yyyy-MM-dd HH:mm:ss")}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine(fileName);
+                }
             }
             Console.WriteLine();
         }
@@ -99,25 +115,4 @@ class Program
     }
 
     // Extract and return the file names from a zip file
-    static List<string> ListFilesInZip(string zipFilePath)
-    {
-        List<string> fileNames = new List<string>();
-
-        try
-        {
-            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
-            {
-                foreach (ZipArchiveEntry entry in archive.Entries)
-                {
-                    fileNames.Add(entry.FullName);
-                }
-            }
-        }
-        catch (IOException ex)
-        {
-            Console.WriteLine($"Error reading zip file: {ex.Message}");
-        }
-
-        return fileNames;
-    }
-}
+    static
