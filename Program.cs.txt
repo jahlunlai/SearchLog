@@ -23,42 +23,30 @@ class Program
             Console.WriteLine($"Files in directory '{directoryPath}':");
             foreach (string fileName in fileNames)
             {
+                DateTime startTime = DateTime.MinValue;
+                DateTime endTime = DateTime.MinValue;
+
+                string dateTimeString = ExtractDateTimeFromFileName(Path.GetFileName(fileName));
+                if (!string.IsNullOrEmpty(dateTimeString))
+                {
+                    startTime = ConvertToDateTime(dateTimeString);
+                }
+
                 if (IsZipFile(fileName))
                 {
                     List<string> zipFileEntries = ListFilesInZip(fileName);
                     foreach (string entry in zipFileEntries)
                     {
-                        DateTime startTime = DateTime.MinValue;
-                        DateTime endTime = DateTime.MinValue;
-
                         string entryFileName = Path.GetFileName(entry);
-                        string dateTimeString = ExtractDateTimeFromFileName(entryFileName);
-                        if (!string.IsNullOrEmpty(dateTimeString))
-                        {
-                            startTime = ConvertToDateTime(dateTimeString);
-                        }
-
-                        // Get the EndTime from the last write time of the entry
-                        string entryPath = Path.Combine(fileName, entry);
-                        if (File.Exists(entryPath))
-                        {
-                            endTime = File.GetLastWriteTime(entryPath);
-                        }
+                        DateTime entryLastWriteTime = GetLastWriteTimeInZipFile(fileName, entry);
 
                         // Print the file name, StartTime, and EndTime
-                        Console.WriteLine($"{entryFileName} - StartTime: {startTime}, EndTime: {endTime}");
+                        Console.WriteLine($"{entryFileName} - StartTime: {startTime}, EndTime: {entryLastWriteTime}");
                     }
                 }
                 else
                 {
-                    DateTime startTime = DateTime.MinValue;
-                    DateTime endTime = File.GetLastWriteTime(fileName);
-
-                    string dateTimeString = ExtractDateTimeFromFileName(Path.GetFileName(fileName));
-                    if (!string.IsNullOrEmpty(dateTimeString))
-                    {
-                        startTime = ConvertToDateTime(dateTimeString);
-                    }
+                    endTime = File.GetLastWriteTime(fileName);
 
                     // Print the file name, StartTime, and EndTime
                     Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime}");
@@ -180,5 +168,29 @@ class Program
     static bool IsZipFile(string fileName)
     {
         return string.Equals(Path.GetExtension(fileName), ".zip", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Get the last write time inside files in the compressed file of a zip file
+    static DateTime GetLastWriteTimeInZipFile(string zipFilePath, string entryFileName)
+    {
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    if (string.Equals(entry.FullName, entryFileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return entry.LastWriteTime.LocalDateTime;
+                    }
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
+        }
+
+        return DateTime.MinValue;
     }
 }
