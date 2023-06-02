@@ -24,7 +24,7 @@ class Program
             {
                 string dateTimeString = ExtractDateTimeFromFileName(fileName);
                 DateTime startTime = ConvertToDateTime(dateTimeString);
-                DateTime endTime = File.GetLastWriteTime(fileName);
+                DateTime endTime = GetLastWriteTimeInZipFile(fileName);
 
                 // Print the file name, StartTime, and EndTime
                 Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime}");
@@ -146,6 +146,34 @@ class Program
         if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
         {
             return dateTime;
+        }
+
+        return DateTime.MinValue;
+    }
+
+    // Get the last write time inside files in the compressed file of a zip file
+    static DateTime GetLastWriteTimeInZipFile(string zipFilePath)
+    {
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    if (!entry.FullName.EndsWith("/")) // Exclude directories
+                    {
+                        DateTime entryLastWriteTime = entry.LastWriteTime.LocalDateTime;
+                        if (entryLastWriteTime > DateTime.MinValue)
+                        {
+                            return entryLastWriteTime;
+                        }
+                    }
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
         }
 
         return DateTime.MinValue;
