@@ -11,8 +11,8 @@ static void CopyFileToOutputFolder(string filePath, string outputSubfolder)
 
         if (IsZipFile(filePath))
         {
-            // Extract the file from the zip and copy it to the output subdirectory
-            string tempPath = Path.Combine(outputSubfolder, fileName);
+            // Extract the file from the zip to a temporary file
+            string tempPath = Path.Combine(outputSubfolder, $"{fileName}.temp");
             using (ZipArchive archive = ZipFile.OpenRead(filePath))
             {
                 ZipArchiveEntry entry = archive.GetEntry(fileName);
@@ -21,6 +21,13 @@ static void CopyFileToOutputFolder(string filePath, string outputSubfolder)
                     entry.ExtractToFile(tempPath, true);
                 }
             }
+
+            // Copy the temporary file to the output subdirectory
+            string outputPath = Path.Combine(outputSubfolder, fileName);
+            File.Copy(tempPath, outputPath, true);
+
+            // Delete the temporary file
+            File.Delete(tempPath);
         }
         else
         {
