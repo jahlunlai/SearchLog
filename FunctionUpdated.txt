@@ -1,0 +1,93 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+class Program
+{
+    static void Main()
+    {
+        // Read the directory paths from the config file
+        string configFilePath = "config.txt"; // Specify the path to your config file
+        List<string> directoryPaths = ReadDirectoryPaths(configFilePath);
+
+        // Create the Output_Files folder
+        string outputFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "Output_Files");
+        Directory.CreateDirectory(outputFolderPath);
+
+        // Process each directory path concurrently
+        Parallel.ForEach(directoryPaths, directoryPath =>
+        {
+            ProcessDirectory(directoryPath, outputFolderPath);
+        });
+
+        Console.WriteLine("Press any key to exit.");
+        Console.ReadKey();
+    }
+
+    // Read the directory paths from the config file
+    static List<string> ReadDirectoryPaths(string filePath)
+    {
+        List<string> directoryPaths = new List<string>();
+
+        try
+        {
+            string[] lines = File.ReadAllLines(filePath);
+
+            foreach (string line in lines)
+            {
+                // Skip empty lines or lines starting with a comment character (e.g., '#')
+                if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
+                    continue;
+
+                // Add the directory path to the list
+                directoryPaths.Add(line.Trim());
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading config file: {ex.Message}");
+        }
+
+        return directoryPaths;
+    }
+
+    // Process a directory and its subdirectories
+    static void ProcessDirectory(string directoryPath, string outputFolderPath)
+    {
+        try
+        {
+            // Get the directory name from the path
+            string directoryName = Path.GetFileName(directoryPath);
+
+            // Create a subfolder inside the Output_Files folder based on the directory name
+            string subfolderPath = Path.Combine(outputFolderPath, directoryName);
+            Directory.CreateDirectory(subfolderPath);
+
+            // List all files in the directory and its subfolders
+            List<string> fileNames = ListAllFiles(directoryPath);
+
+            // Process each file
+            foreach (string fileName in fileNames)
+            {
+                // ...
+                // Rest of the file processing logic
+                // ...
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error processing directory '{directoryPath}': {ex.Message}");
+        }
+    }
+
+    // Rest of the methods...
+
+    // ...
+    // Rest of the code
+    // ...
+}
