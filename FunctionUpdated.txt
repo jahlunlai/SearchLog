@@ -25,6 +25,14 @@ class Program
             ProcessDirectory(directoryPath, outputFolderPath);
         });
 
+        // Get user input for datetime
+        Console.Write("Enter a datetime in the format 'yyyyMMdd_HHmmss': ");
+        string userInput = Console.ReadLine();
+        DateTime inputDateTime = ConvertToDateTime(userInput);
+
+        // Compare input datetime with StartTime and EndTime of files
+        CompareDateTimeWithFileTimes(outputFolderPath, inputDateTime);
+
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
     }
