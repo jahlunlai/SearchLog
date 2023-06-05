@@ -15,23 +15,27 @@ class Program
         string configFilePath = "config.txt"; // Specify the path to your config file
         List<string> directoryPaths = ReadDirectoryPaths(configFilePath);
 
+        // Get the user input string
+        Console.Write("Enter a date-time string (format: yyyyMMdd_HHmmss): ");
+        string userInput = Console.ReadLine();
+
+        // Convert user input string to DateTime
+        DateTime userInputDateTime = ConvertToDateTime(userInput);
+        TraceLog($"User input: {userInputDateTime}");
+
         // Create the Output_Files folder
-        string outputFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "Output_Files");
-        Directory.CreateDirectory(outputFolderPath);
+        string outputFolder = Path.Combine(Directory.GetCurrentDirectory(), "Output_Files");
+        Directory.CreateDirectory(outputFolder);
 
         // Process each directory path concurrently
         Parallel.ForEach(directoryPaths, directoryPath =>
         {
-            ProcessDirectory(directoryPath, outputFolderPath);
+            string folderName = Path.GetFileName(directoryPath);
+            string subFolder = Path.Combine(outputFolder, folderName);
+            Directory.CreateDirectory(subFolder);
+
+            ProcessDirectory(directoryPath, userInputDateTime, subFolder);
         });
-
-        // User input for datetime
-        Console.WriteLine("Enter a datetime in the format 'yyyyMMdd_HHmmss':");
-        string dateTimeString = Console.ReadLine();
-        DateTime inputDateTime = ConvertToDateTime(dateTimeString);
-
-        // Compare the input datetime with StartTime and EndTime
-        CompareDateTime(inputDateTime, outputFolderPath);
 
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
@@ -65,45 +69,45 @@ class Program
     }
 
     // Process a directory and its subdirectories
-    static void ProcessDirectory(string directoryPath, string outputFolderPath)
+    static void ProcessDirectory(string directoryPath, DateTime userInputDateTime, string outputFolder)
     {
         try
         {
-            // Get the directory name from the path
-            string directoryName = Path.GetFileName(directoryPath);
-
-            // Create a subfolder inside the Output_Files folder based on the directory name
-            string subfolderPath = Path.Combine(outputFolderPath, directoryName);
-            Directory.CreateDirectory(subfolderPath);
-
             // List all files in the directory and its subfolders
             List<string> fileNames = ListAllFiles(directoryPath);
 
             // Process each file
             foreach (string fileName in fileNames)
             {
-                // Extract the DateTime from the file name
-                string dateTimeString = ExtractDateTimeFromFileName(fileName);
-                DateTime startTime = ConvertToDateTime(dateTimeString);
-
-                // Get the EndTime using LastWriteTime of the file inside the compressed file
+                DateTime startTime = DateTime.MinValue;
                 DateTime endTime = DateTime.MinValue;
+
+                string dateTimeString = ExtractDateTimeFromFileName(Path.GetFileName(fileName));
+                if (!string.IsNullOrEmpty(dateTimeString))
+                {
+                    startTime = ConvertToDateTime(dateTimeString);
+                }
+
                 if (IsZipFile(fileName))
                 {
-                    string zipFilePath = Path.Combine(directoryPath, fileName);
-                    endTime = GetLastWriteTimeInZipFile(zipFilePath, fileName);
+                    List<string> zipFileEntries = ListFilesInZip(fileName);
+                    foreach (string entry in zipFileEntries)
+                    {
+                        string entryFileName = Path.GetFileName(entry);
+                        DateTime entryStartTime = ExtractStartTimeFromEntryFileName(entryFileName);
+                        DateTime entryEndTime = GetLastWriteTimeInZipFile(fileName, entry);
+
+                        // Print the file name, StartTime, EndTime, and whether the user input is in range
+                        TraceLog($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}", outputFolder);
+                    }
                 }
                 else
                 {
                     endTime = File.GetLastWriteTime(fileName);
+
+                    // Print the file name, StartTime, EndTime, and whether the user input is in range
+                    TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}", outputFolder);
                 }
-
-                // Print the file name and corresponding StartTime and EndTime
-                Console.WriteLine($"{fileName} - StartTime: {startTime} - EndTime: {endTime}");
-
-                // ...
-                // Rest of the file processing logic
-                // ...
             }
         }
         catch (IOException ex)
@@ -112,50 +116,144 @@ class Program
         }
     }
 
-    // Compare the input datetime with StartTime and EndTime
-    static void CompareDateTime(DateTime inputDateTime, string outputFolderPath)
+    // Recursively list all files in a directory and its subfolders, including files inside zip files
+    static List<string> ListAllFiles(string directoryPath)
     {
+        List<string> fileNames = new List<string>();
+
         try
         {
-            // Get all the files in the output folder and its subfolders
-            List<string> fileNames = ListAllFiles(outputFolderPath);
-
-            // Process each file
-            foreach (string fileName in fileNames)
+            // Get all files in the current directory
+            string[] files = Directory.GetFiles(directoryPath);
+            foreach (string file in files)
             {
-                // Extract the DateTime from the file name
-                string dateTimeString = ExtractDateTimeFromFileName(fileName);
-                DateTime startTime = ConvertToDateTime(dateTimeString);
+                fileNames.Add(file);
+            }
 
-                // Get the EndTime using LastWriteTime of the file inside the compressed file
-                DateTime endTime = DateTime.MinValue;
-                if (IsZipFile(fileName))
-                {
-                    string zipFilePath = GetParentDirectoryPath(fileName);
-                    string zipEntryFileName = GetFileNameFromPath(fileName);
-                    endTime = GetLastWriteTimeInZipFile(zipFilePath, zipEntryFileName);
-                }
-                else
-                {
-                    endTime = File.GetLastWriteTime(fileName);
-                }
-
-                // Compare the input datetime with StartTime and EndTime
-                bool isBetween = inputDateTime >= startTime && inputDateTime <= endTime;
-
-                // Print the file name, StartTime, EndTime, and the comparison result
-                Console.WriteLine($"{fileName} - StartTime: {startTime} - EndTime: {endTime} - IsBetween: {isBetween}");
+            // Recursively process subdirectories
+            string[] subDirectories = Directory.GetDirectories(directoryPath);
+            foreach (string subDirectory in subDirectories)
+            {
+                List<string> subDirectoryFiles = ListAllFiles(subDirectory);
+                fileNames.AddRange(subDirectoryFiles);
             }
         }
         catch (IOException ex)
         {
-            Console.WriteLine($"Error comparing datetime: {ex.Message}");
+            Console.WriteLine($"Error listing files: {ex.Message}");
         }
+
+        return fileNames;
     }
 
-    // Rest of the methods...
+    // Extract and return the file names from a zip file
+    static List<string> ListFilesInZip(string zipFilePath)
+    {
+        List<string> fileNames = new List<string>();
 
-    // ...
-    // Rest of the code
-    // ...
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    fileNames.Add(entry.FullName);
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
+        }
+
+        return fileNames;
+    }
+
+    // Extract and return the date and time from the file name
+    static string ExtractDateTimeFromFileName(string fileName)
+    {
+        string pattern = @"\d{8}_\d{6}";
+        Match match = Regex.Match(fileName, pattern);
+        if (match.Success)
+        {
+            return match.Value;
+        }
+
+        return string.Empty;
+    }
+
+    // Convert the extracted date and time to a DateTime object
+    static DateTime ConvertToDateTime(string dateTimeString)
+    {
+        if (DateTime.TryParseExact(dateTimeString, "yyyyMMdd_HHmmss", null, System.Globalization.DateTimeStyles.None, out DateTime dateTime))
+        {
+            return dateTime;
+        }
+
+        return DateTime.MinValue;
+    }
+
+    // Check if a file is a zip file
+    static bool IsZipFile(string fileName)
+    {
+        return string.Equals(Path.GetExtension(fileName), ".zip", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Extract the StartTime from the entry file name
+    static DateTime ExtractStartTimeFromEntryFileName(string entryFileName)
+    {
+        string dateTimeString = ExtractDateTimeFromFileName(entryFileName);
+        if (!string.IsNullOrEmpty(dateTimeString))
+        {
+            return ConvertToDateTime(dateTimeString);
+        }
+
+        return DateTime.MinValue;
+    }
+
+    // Get the last write time inside files in the compressed file of a zip file
+    static DateTime GetLastWriteTimeInZipFile(string zipFilePath, string entryFileName)
+    {
+        try
+        {
+            using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    if (string.Equals(entry.FullName, entryFileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return entry.LastWriteTime.LocalDateTime;
+                    }
+                }
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading zip file: {ex.Message}");
+        }
+
+        return DateTime.MinValue;
+    }
+
+    // Check if a DateTime is within the range of StartTime and EndTime
+    static bool IsDateTimeInRange(DateTime dateTime, DateTime startTime, DateTime endTime)
+    {
+        return dateTime >= startTime && dateTime <= endTime;
+    }
+
+    // Trace log function to record the program's process procedure
+    static void TraceLog(string message, string outputFolder)
+    {
+        // Generate the log file path based on the thread's managed ID
+        string logFilePath = Path.Combine(outputFolder, $"log_thread_{Thread.CurrentThread.ManagedThreadId}.txt");
+
+        // Append the message to the log file
+        using (StreamWriter writer = File.AppendText(logFilePath))
+        {
+            writer.WriteLine($"{DateTime.Now} - {message}");
+        }
+
+        // Also print the message to the console
+        Console.WriteLine(message);
+    }
 }
