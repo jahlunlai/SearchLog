@@ -1,43 +1,95 @@
-// Copy a file to the output folder subdirectory
-static void CopyFileToOutputFolder(string filePath, string outputSubfolder)
+// Process a directory and its subdirectories
+static void ProcessDirectory(string directoryPath, DateTime userInputDateTime)
+{
+    try
+    {
+        // List all files in the directory and its subfolders
+        List<string> fileNames = ListAllFiles(directoryPath);
+
+        // Process each file
+        foreach (string fileName in fileNames)
+        {
+            DateTime startTime = DateTime.MinValue;
+            DateTime endTime = DateTime.MinValue;
+
+            string dateTimeString = ExtractDateTimeFromFileName(Path.GetFileName(fileName));
+            if (!string.IsNullOrEmpty(dateTimeString))
+            {
+                startTime = ConvertToDateTime(dateTimeString);
+            }
+
+            if (IsZipFile(fileName))
+            {
+                string zipFilePath = fileName;
+                List<string> zipFileEntries = ListFilesInZip(zipFilePath);
+                foreach (string entry in zipFileEntries)
+                {
+                    string entryFileName = Path.GetFileName(entry);
+                    DateTime entryStartTime = ExtractStartTimeFromEntryFileName(entryFileName);
+                    DateTime entryEndTime = GetLastWriteTimeInZipFile(zipFilePath, entry);
+
+                    // Print the file name, StartTime, EndTime, and whether the user input is in range
+                    TraceLog($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}");
+
+                    if (IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime))
+                    {
+                        // Copy the file to the output folder
+                        string outputSubfolder = Path.Combine("Output_Files", Path.GetFileNameWithoutExtension(directoryPath));
+                        CopyFileToOutputFolder(zipFilePath, entry, outputSubfolder);
+                    }
+                }
+            }
+            else
+            {
+                endTime = File.GetLastWriteTime(fileName);
+
+                // Print the file name, StartTime, EndTime, and whether the user input is in range
+                TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
+
+                if (IsDateTimeInRange(userInputDateTime, startTime, endTime))
+                {
+                    // Copy the file to the output folder
+                    string outputSubfolder = Path.Combine("Output_Files", Path.GetFileNameWithoutExtension(directoryPath));
+                    CopyFileToOutputFolder(fileName, outputSubfolder);
+                }
+            }
+        }
+    }
+    catch (IOException ex)
+    {
+        Console.WriteLine($"Error processing directory '{directoryPath}': {ex.Message}");
+    }
+}
+
+
+// Copy a file from a zip file to the output folder subdirectory
+static void CopyFileToOutputFolder(string zipFilePath, string entryFileName, string outputSubfolder)
 {
     try
     {
         // Create the output subdirectory if it doesn't exist
         Directory.CreateDirectory(outputSubfolder);
 
-        // Get the file name from the file path
-        string fileName = Path.GetFileName(filePath);
-
-        if (IsZipFile(filePath))
+        // Extract the file from the zip to a temporary file
+        string tempPath = Path.Combine(outputSubfolder, $"{entryFileName}.temp");
+        using (ZipArchive archive = ZipFile.OpenRead(zipFilePath))
         {
-            // Extract the file from the zip to a temporary file
-            string tempPath = Path.Combine(outputSubfolder, $"{fileName}.temp");
-            using (ZipArchive archive = ZipFile.OpenRead(filePath))
+            ZipArchiveEntry entry = archive.GetEntry(entryFileName);
+            if (entry != null)
             {
-                ZipArchiveEntry entry = archive.GetEntry(fileName);
-                if (entry != null)
-                {
-                    entry.ExtractToFile(tempPath, true);
-                }
+                entry.ExtractToFile(tempPath, true);
             }
-
-            // Copy the temporary file to the output subdirectory
-            string outputPath = Path.Combine(outputSubfolder, fileName);
-            File.Copy(tempPath, outputPath, true);
-
-            // Delete the temporary file
-            File.Delete(tempPath);
         }
-        else
-        {
-            // Copy the file to the output subdirectory
-            string outputPath = Path.Combine(outputSubfolder, fileName);
-            File.Copy(filePath, outputPath, true);
-        }
+
+        // Copy the temporary file to the output subdirectory
+        string outputPath = Path.Combine(outputSubfolder, entryFileName);
+        File.Copy(tempPath, outputPath, true);
+
+        // Delete the temporary file
+        File.Delete(tempPath);
     }
     catch (IOException ex)
     {
-        Console.WriteLine($"Error copying file '{filePath}' to output folder: {ex.Message}");
+        Console.WriteLine($"Error copying file '{entryFileName}' from zip file '{zipFilePath}' to output folder: {ex.Message}");
     }
 }
