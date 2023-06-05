@@ -23,18 +23,14 @@ class Program
         DateTime userInputDateTime = ConvertToDateTime(userInput);
         TraceLog($"User input: {userInputDateTime}");
 
-        // Create the Output_Files folder
-        string outputFolder = Path.Combine(Directory.GetCurrentDirectory(), "Output_Files");
-        Directory.CreateDirectory(outputFolder);
+        // Create the "Output_Files" directory if it doesn't exist
+        string outputFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "Output_Files");
+        Directory.CreateDirectory(outputFolderPath);
 
         // Process each directory path concurrently
         Parallel.ForEach(directoryPaths, directoryPath =>
         {
-            string folderName = Path.GetFileName(directoryPath);
-            string subFolder = Path.Combine(outputFolder, folderName);
-            Directory.CreateDirectory(subFolder);
-
-            ProcessDirectory(directoryPath, userInputDateTime, subFolder);
+            ProcessDirectory(directoryPath, userInputDateTime, outputFolderPath);
         });
 
         Console.WriteLine("Press any key to exit.");
@@ -69,7 +65,7 @@ class Program
     }
 
     // Process a directory and its subdirectories
-    static void ProcessDirectory(string directoryPath, DateTime userInputDateTime, string outputFolder)
+    static void ProcessDirectory(string directoryPath, DateTime userInputDateTime, string outputFolderPath)
     {
         try
         {
@@ -98,7 +94,13 @@ class Program
                         DateTime entryEndTime = GetLastWriteTimeInZipFile(fileName, entry);
 
                         // Print the file name, StartTime, EndTime, and whether the user input is in range
-                        TraceLog($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}", outputFolder);
+                        TraceLog($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}");
+
+                        if (IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime))
+                        {
+                            string outputSubfolder = Path.Combine(outputFolderPath, Path.GetFileNameWithoutExtension(fileName));
+                            CopyFileToOutputFolder(entry, outputSubfolder);
+                        }
                     }
                 }
                 else
@@ -106,7 +108,13 @@ class Program
                     endTime = File.GetLastWriteTime(fileName);
 
                     // Print the file name, StartTime, EndTime, and whether the user input is in range
-                    TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}", outputFolder);
+                    TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
+
+                    if (IsDateTimeInRange(userInputDateTime, startTime, endTime))
+                    {
+                        string outputSubfolder = Path.Combine(outputFolderPath, Path.GetFileNameWithoutExtension(fileName));
+                        CopyFileToOutputFolder(fileName, outputSubfolder);
+                    }
                 }
             }
         }
@@ -242,10 +250,10 @@ class Program
     }
 
     // Trace log function to record the program's process procedure
-    static void TraceLog(string message, string outputFolder)
+    static void TraceLog(string message)
     {
         // Generate the log file path based on the thread's managed ID
-        string logFilePath = Path.Combine(outputFolder, $"log_thread_{Thread.CurrentThread.ManagedThreadId}.txt");
+        string logFilePath = $"log_thread_{Thread.CurrentThread.ManagedThreadId}.txt";
 
         // Append the message to the log file
         using (StreamWriter writer = File.AppendText(logFilePath))
@@ -255,5 +263,26 @@ class Program
 
         // Also print the message to the console
         Console.WriteLine(message);
+    }
+
+    // Copy a file to the output folder subdirectory
+    static void CopyFileToOutputFolder(string filePath, string outputSubfolder)
+    {
+        try
+        {
+            // Create the output subdirectory if it doesn't exist
+            Directory.CreateDirectory(outputSubfolder);
+
+            // Get the file name from the file path
+            string fileName = Path.GetFileName(filePath);
+
+            // Copy the file to the output subdirectory
+            string outputPath = Path.Combine(outputSubfolder, fileName);
+            File.Copy(filePath, outputPath, true);
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error copying file '{filePath}' to output folder: {ex.Message}");
+        }
     }
 }
