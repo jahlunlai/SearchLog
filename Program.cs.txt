@@ -4,6 +4,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -21,14 +23,52 @@ class Program
         DateTime userInputDateTime = ConvertToDateTime(userInput);
         TraceLog($"User input: {userInputDateTime}");
 
-        // Iterate through each directory path
-        foreach (string directoryPath in directoryPaths)
+        // Process each directory path concurrently
+        Parallel.ForEach(directoryPaths, directoryPath =>
+        {
+            ProcessDirectory(directoryPath, userInputDateTime);
+        });
+
+        Console.WriteLine("Press any key to exit.");
+        Console.ReadKey();
+    }
+
+    // Read the directory paths from the config file
+    static List<string> ReadDirectoryPaths(string filePath)
+    {
+        List<string> directoryPaths = new List<string>();
+
+        try
+        {
+            string[] lines = File.ReadAllLines(filePath);
+
+            foreach (string line in lines)
+            {
+                // Skip empty lines or lines starting with a comment character (e.g., '#')
+                if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
+                    continue;
+
+                // Add the directory path to the list
+                directoryPaths.Add(line.Trim());
+            }
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"Error reading config file: {ex.Message}");
+        }
+
+        return directoryPaths;
+    }
+
+    // Process a directory and its subdirectories
+    static void ProcessDirectory(string directoryPath, DateTime userInputDateTime)
+    {
+        try
         {
             // List all files in the directory and its subfolders
             List<string> fileNames = ListAllFiles(directoryPath);
 
-            // Display the file names, StartTime, and EndTime
-            TraceLog($"Files in directory '{directoryPath}':");
+            // Process each file
             foreach (string fileName in fileNames)
             {
                 DateTime startTime = DateTime.MinValue;
@@ -61,39 +101,11 @@ class Program
                     TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
                 }
             }
-
-            TraceLog("");
-        }
-
-        Console.WriteLine("Press any key to exit.");
-        Console.ReadKey();
-    }
-
-    // Read the directory paths from the config file
-    static List<string> ReadDirectoryPaths(string filePath)
-    {
-        List<string> directoryPaths = new List<string>();
-
-        try
-        {
-            string[] lines = File.ReadAllLines(filePath);
-
-            foreach (string line in lines)
-            {
-                // Skip empty lines or lines starting with a comment character (e.g., '#')
-                if (string.IsNullOrWhiteSpace(line) || line.Trim().StartsWith("#"))
-                    continue;
-
-                // Add the directory path to the list
-                directoryPaths.Add(line.Trim());
-            }
         }
         catch (IOException ex)
         {
-            Console.WriteLine($"Error reading config file: {ex.Message}");
+            Console.WriteLine($"Error processing directory '{directoryPath}': {ex.Message}");
         }
-
-        return directoryPaths;
     }
 
     // Recursively list all files in a directory and its subfolders, including files inside zip files
@@ -224,8 +236,10 @@ class Program
     // Trace log function to record the program's process procedure
     static void TraceLog(string message)
     {
-        // Append the message to a log file
-        string logFilePath = "log.txt"; // Specify the path to your log file
+        // Generate the log file path based on the thread's managed ID
+        string logFilePath = $"log_thread_{Thread.CurrentThread.ManagedThreadId}.txt";
+
+        // Append the message to the log file
         using (StreamWriter writer = File.AppendText(logFilePath))
         {
             writer.WriteLine($"{DateTime.Now} - {message}");
