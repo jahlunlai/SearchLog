@@ -9,9 +9,9 @@ class Program
 {
     static void Main()
     {
-        // Read the config file
+        // Read the directory paths from the config file
         string configFilePath = "config.txt"; // Specify the path to your config file
-        List<string> directoryPaths = ReadConfigFile(configFilePath);
+        List<string> directoryPaths = ReadDirectoryPaths(configFilePath);
 
         // Get the user input string
         Console.Write("Enter a date-time string (format: yyyyMMdd_HHmmss): ");
@@ -19,7 +19,7 @@ class Program
 
         // Convert user input string to DateTime
         DateTime userInputDateTime = ConvertToDateTime(userInput);
-        Console.WriteLine($"User input: {userInputDateTime}");
+        TraceLog($"User input: {userInputDateTime}");
 
         // Iterate through each directory path
         foreach (string directoryPath in directoryPaths)
@@ -28,7 +28,7 @@ class Program
             List<string> fileNames = ListAllFiles(directoryPath);
 
             // Display the file names, StartTime, and EndTime
-            Console.WriteLine($"Files in directory '{directoryPath}':");
+            TraceLog($"Files in directory '{directoryPath}':");
             foreach (string fileName in fileNames)
             {
                 DateTime startTime = DateTime.MinValue;
@@ -49,28 +49,28 @@ class Program
                         DateTime entryStartTime = ExtractStartTimeFromEntryFileName(entryFileName);
                         DateTime entryEndTime = GetLastWriteTimeInZipFile(fileName, entry);
 
-                        // Print the file name, StartTime, and EndTime
-                        Console.WriteLine($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}");
+                        // Print the file name, StartTime, EndTime, and whether the user input is in range
+                        TraceLog($"{entryFileName} - StartTime: {entryStartTime}, EndTime: {entryEndTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, entryStartTime, entryEndTime)}");
                     }
                 }
                 else
                 {
                     endTime = File.GetLastWriteTime(fileName);
 
-                    // Print the file name, StartTime, and EndTime
-                    Console.WriteLine($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
+                    // Print the file name, StartTime, EndTime, and whether the user input is in range
+                    TraceLog($"{fileName} - StartTime: {startTime}, EndTime: {endTime} - IsInRange: {IsDateTimeInRange(userInputDateTime, startTime, endTime)}");
                 }
             }
 
-            Console.WriteLine();
+            TraceLog("");
         }
 
         Console.WriteLine("Press any key to exit.");
         Console.ReadKey();
     }
 
-    // Read the config file and return a list of directory paths
-    static List<string> ReadConfigFile(string filePath)
+    // Read the directory paths from the config file
+    static List<string> ReadDirectoryPaths(string filePath)
     {
         List<string> directoryPaths = new List<string>();
 
@@ -219,5 +219,19 @@ class Program
     static bool IsDateTimeInRange(DateTime dateTime, DateTime startTime, DateTime endTime)
     {
         return dateTime >= startTime && dateTime <= endTime;
+    }
+
+    // Trace log function to record the program's process procedure
+    static void TraceLog(string message)
+    {
+        // Append the message to a log file
+        string logFilePath = "log.txt"; // Specify the path to your log file
+        using (StreamWriter writer = File.AppendText(logFilePath))
+        {
+            writer.WriteLine($"{DateTime.Now} - {message}");
+        }
+
+        // Also print the message to the console
+        Console.WriteLine(message);
     }
 }
